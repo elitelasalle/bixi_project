@@ -1,7 +1,7 @@
 # BIXI Station Finder
 
 Web app project for finding BIXI bike stations in Montreal and checking live availability.
-Beta version: bixiprojectt.vercel.app
+Beta version: [bixiprojectt.vercel.app](https://bixiprojectt.vercel.app/)
 ## Team
 **Elite Team** - LaSalle College Montreal  
 Professor: Mohamed Zeroug
