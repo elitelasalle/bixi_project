@@ -42,13 +42,5 @@ API endpoints are documented in `BixiData.txt`
 - 🚧 Live data integration (in progress)
 - 🚧 Station popup with availability info (in progress)
 
-## Next Steps
-- Add search input with autocomplete
-- Fetch and combine BIXI API data
-- Display searched station on map with live info
-- Error handling and loading states
 
-## Notes
-- MapTiler API key is already configured in `osm.html`
-- Each team member should work on their assigned part
-- Test your changes before pushing to main
+
