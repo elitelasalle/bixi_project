@@ -13,14 +13,82 @@
       height: 100%;
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
     }
     #map {
       height: 100%;
       width: 100%;
     }
+    
+    /* Search box styles */
+    .search-container {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      width: 90%;
+      max-width: 400px;
+    }
+    
+    #station-search {
+      width: 100%;
+      padding: 12px 20px;
+      font-size: 16px;
+      border: 2px solid #ddd;
+      border-radius: 25px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    
+    #station-search:focus {
+      border-color: #e01e1e;
+    }
+    
+    #suggestions {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      margin-top: 5px;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none;
+    }
+    
+    .suggestion-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .suggestion-item:hover {
+      background-color: #f5f5f5;
+    }
+    
+    .suggestion-item:last-child {
+      border-bottom: none;
+    }
+    
+    .no-results {
+      padding: 12px 20px;
+      color: #999;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
+
+  <!-- Search container -->
+  <div class="search-container">
+    <input 
+      type="text" 
+      id="station-search" 
+      placeholder="Search for a BIXI station..."
+      autocomplete="off"
+    >
+    <div id="suggestions"></div>
+  </div>
 
   <!-- Map container -->
   <div id="map"></div>
@@ -29,33 +97,118 @@
   
 
   <script>
-    // 1️Default coordinates (e.g., Montreal)
-    const defaultLat = 45.5019;
-    const defaultLng = -73.5674;
+    // Montreal coordinates
+    const montrealLat = 45.5019;
+    const montrealLng = -73.5674;
 
-    // 2️Initialize map and set view
-     const map = L.map('map').setView([45.5019, -73.5674], 1);
+    // Initialize map
+    const map = L.map('map').setView([montrealLat, montrealLng], 13);
 
-    // 3️Add OSM tiles
+    // Add MapTiler tiles
     L.tileLayer('https://api.maptiler.com/maps/streets-v2/256/{z}/{x}/{y}.png?key=OOmvRSeYFvE5WAiVJbwh', {
       maxZoom: 19,
       attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
     }).addTo(map);
 
-    // 4️Define some markers
-    const locations = [
-      { name: "Downtown Montreal", coords: [45.5019, -73.5674] },
-      { name: "Old Port", coords: [45.5075, -73.5530] },
-      { name: "Mount Royal Park", coords: [45.5048, -73.5878] },
-      { name: "McGill University", coords: [45.5041, -73.5747] }
-    ];
-
-    // 5️ Add markers to the map
-    locations.forEach(loc => {
-      L.marker(loc.coords)
+    // Store stations data
+    let stations = [];
+    
+    // API URLs
+    const STATION_INFO_URL = 'https://gbfs.velobixi.com/gbfs/2-2/en/station_information.json';
+    
+    // Fetch station data
+    async function loadStations() {
+      try {
+        const response = await fetch(STATION_INFO_URL);
+        const data = await response.json();
+        stations = data.data.stations;
+        console.log(`Loaded ${stations.length} stations`);
+      } catch (error) {
+        console.error('Error loading stations:', error);
+      }
+    }
+    
+    // Get search elements
+    const searchInput = document.getElementById('station-search');
+    const suggestionsDiv = document.getElementById('suggestions');
+    
+    // Filter stations based on search input
+    function filterStations(searchTerm) {
+      if (!searchTerm) return [];
+      
+      const term = searchTerm.toLowerCase();
+      return stations.filter(station => 
+        station.name.toLowerCase().includes(term)
+      ).slice(0, 10); // Limit to 10 results
+    }
+    
+    // Display suggestions
+    function showSuggestions(filteredStations) {
+      if (filteredStations.length === 0) {
+        suggestionsDiv.innerHTML = '<div class="no-results">No stations found</div>';
+        suggestionsDiv.style.display = 'block';
+        return;
+      }
+      
+      suggestionsDiv.innerHTML = filteredStations
+        .map(station => `
+          <div class="suggestion-item" data-station-id="${station.station_id}">
+            ${station.name}
+          </div>
+        `)
+        .join('');
+      
+      suggestionsDiv.style.display = 'block';
+      
+      // Add click handlers to suggestions
+      document.querySelectorAll('.suggestion-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const stationId = item.dataset.stationId;
+          const station = stations.find(s => s.station_id === stationId);
+          selectStation(station);
+        });
+      });
+    }
+    
+    // Handle station selection
+    function selectStation(station) {
+      searchInput.value = station.name;
+      suggestionsDiv.style.display = 'none';
+      
+      // Center map on station
+      map.setView([station.lat, station.lon], 16);
+      
+      // Add marker
+      L.marker([station.lat, station.lon])
         .addTo(map)
-        .bindPopup(`<b>${loc.name}</b>`);
+        .bindPopup(`<b>${station.name}</b><br>Capacity: ${station.capacity}`)
+        .openPopup();
+      
+      console.log('Selected station:', station);
+    }
+    
+    // Search input event listener
+    searchInput.addEventListener('input', (e) => {
+      const searchTerm = e.target.value.trim();
+      
+      if (searchTerm.length < 2) {
+        suggestionsDiv.style.display = 'none';
+        return;
+      }
+      
+      const filtered = filterStations(searchTerm);
+      showSuggestions(filtered);
     });
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-container')) {
+        suggestionsDiv.style.display = 'none';
+      }
+    });
+    
+    // Load stations on page load
+    loadStations();
   </script>
 </body>
 </html>
