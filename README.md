@@ -38,7 +38,7 @@ API endpoints are documented in `BixiData.txt`
 ## Current Status
 - ✅ Basic map setup with Leaflet
 - ✅ MapTiler API configured
-- 🚧 Station search functionality (in progress)
+- ✅  Station search functionality
 - 🚧 Live data integration (in progress)
 - 🚧 Station popup with availability info (in progress)
 
